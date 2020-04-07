@@ -1,5 +1,7 @@
 <?php
 
+use \Firebase\JWT\JWT;
+
 /**
  * Register all actions and filters for the plugin
  *
@@ -129,27 +131,27 @@ class Gordon_Now_App_Loader {
 		 */
 
 		function authenticate_user_get_cookies( WP_REST_Request $request ) {
-			$body_params = $request->paramas['POST'];
-			return var_dump($body_params);
-			$the_user = wp_authenticate($request->{POST}['username'], $request->{POST}['password']);
+			$the_user = wp_authenticate($request['username'], $request['password']);
 			if( is_wp_error( $the_user ) ) {
 				// TODO: Replace with a better 401 response
 				// return new WP_REST_Response(null, 401);
-				return var_dump($the_user);
+				return $the_user;
 			} else {
 				$user_id = $the_user->{'ID'};
 				// TODO: Short duration cookie for example only
 				$expiration = time() + 580;
-				// TODO: Change scheme to secure auth later
+				// TODO: Change scheme to secure auth (https) later
 				// This is the auth cookie used in wp-admin / wp-content that shows what you have access to. I think.
 				$auth_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token = '' );
 				// This is the front-end cookie that tells wordpress you have a valid logged in user session
 				$logged_in_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token = '' );
 				// The cookie names have hashed identifiers using WP constants
+				$wordpress_cookie_exp = 'wordpress_cookie_expiration_unix';
 				$wordpress_cookie = 'wordpress_' . COOKIEHASH;
 				$wordpress_logged_in_cookie = 'wordpress_logged_in_' . COOKIEHASH;
 				// Populating the object we return with the cookies and their cookie names
 				$wp_cookies_object = new stdClass();
+				$wp_cookies_object->$wordpress_cookie_exp = $expiration;
 				$wp_cookies_object->$wordpress_cookie = $auth_cookie;
 				$wp_cookies_object->$wordpress_logged_in_cookie = $logged_in_cookie;
 				return $wp_cookies_object;
@@ -160,6 +162,58 @@ class Gordon_Now_App_Loader {
 			register_rest_route( 'gordon-now-app/v1', '/authenticate-user', array(
 			  'methods' => 'POST',
 			  'callback' => 'authenticate_user_get_cookies',
+			) );
+		} );
+
+		/**
+		 * Endpoint to provide JWT
+		 */
+
+		function generate_gna_jwt( WP_REST_Request $request ) {
+			if (defined('GNA_PRIVATE_KEY') && defined('GNA_AUTH_AUD')) {
+				$key = GNA_PRIVATE_KEY;
+				$aud = GNA_AUTH_AUD;
+				$payload = array(
+					"iss" => site_url(),
+					"aud" => $aud,
+					"iat" => time(),
+					"nbf" => time(),
+					// TODO: Set expiration time for JWT
+					"exp" => time() + 580
+				);
+	
+				/**
+				 * IMPORTANT:
+				 * You must specify supported algorithms for your application. See
+				 * https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40
+				 * for a list of spec-compliant algorithms.
+				 */
+				$jwt = JWT::encode($payload, $key);
+				$decoded = JWT::decode($jwt, $key, array('HS256'));
+				return $jwt;
+			} else {
+				wp_die('The Gordon Now App Integration plugin requires GNA_PRIVATE_KEY & GNA_AUTH_AUD');
+				return;
+			}
+		}
+	
+		add_action( 'rest_api_init', function () {
+			register_rest_route( 'gordon-now-app/v1', '/generate-gna-jwt', array(
+			  'methods' => 'POST',
+			  'callback' => 'generate_gna_jwt',
+			) );
+		} );
+
+		// Validate user is still logged in via cookies
+
+		function validate_cookies( WP_REST_Request $request ) {
+			return(wp_validate_auth_cookie($request['auth_cookie'], 'auth') && wp_validate_auth_cookie($request['logged_in_cookie'], 'logged_in'));
+		}
+
+		add_action( 'rest_api_init', function () {
+			register_rest_route( 'gordon-now-app/v1', '/validate-cookies', array(
+			  'methods' => 'POST',
+			  'callback' => 'validate_cookies',
 			) );
 		} );
 

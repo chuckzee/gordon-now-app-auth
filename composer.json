@@ -1,0 +1,8 @@
+{
+    "name": "gfs-web-marketing/gordon-now-app-integration",
+    "type": "wordpress-plugin",
+    "require": {
+        "composer/installers": "^1.0",
+        "firebase/php-jwt": "^5.2"
+    }
+}

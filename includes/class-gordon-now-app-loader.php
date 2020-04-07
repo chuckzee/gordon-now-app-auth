@@ -139,7 +139,7 @@ class Gordon_Now_App_Loader {
 			} else {
 				$user_id = $the_user->{'ID'};
 				$user_email = $the_user->{'user_email'};
-				// TODO: Short duration cookie for example only
+				// TODO: Short duration cookie for example only - probably a config option
 				$expiration = time() + 580;
 				// TODO: Change scheme to secure auth (https) later
 				// This is the auth cookie used in wp-admin / wp-content that shows what you have access to. I think.
@@ -164,10 +164,10 @@ class Gordon_Now_App_Loader {
 		}
 	
 		add_action( 'rest_api_init', function () {
-			register_rest_route( 'gordon-now-app/v1', '/authenticate-user', array(
+			register_rest_route( 'gordon-now-app/v1', '/authenticate-user', [
 			  'methods' => 'POST',
 			  'callback' => 'authenticate_user_generate_tokens',
-			) );
+			]);
 		} );
 
 		/**
@@ -176,18 +176,19 @@ class Gordon_Now_App_Loader {
 
 		function generate_gna_jwt( $user_email ) {
 			if (defined('GNA_PRIVATE_KEY') && defined('GNA_AUTH_AUD')) {
+				$current_time = time();
 				$key = GNA_PRIVATE_KEY;
 				$publicKey = GNA_PUBLIC_KEY;
 				$aud = GNA_AUTH_AUD;
-				$payload = array(
+				$payload = [
 					"iss" => site_url(),
 					"aud" => $aud,
-					"iat" => time(),
-					"nbf" => time(),
-					// TODO: Set expiration time for JWT
-					"exp" => time() + 580,
+					"iat" => $current_time,
+					"nbf" => $current_time,
+					// TODO: Set expiration time for JWT - probably in a config variable
+					"exp" => $current_time + 580,
 					"sub" => $user_email
-				);
+				];
 	
 				/**
 				 * IMPORTANT:
@@ -196,7 +197,7 @@ class Gordon_Now_App_Loader {
 				 * for a list of spec-compliant algorithms.
 				 */
 				$jwt = JWT::encode($payload, $key, 'RS256');
-				$decoded = JWT::decode($jwt, $publicKey, array('RS256'));
+				$decoded = JWT::decode($jwt, $publicKey, ['RS256']);
 				return $jwt;
 			} else {
 				wp_die('The Gordon Now App Integration plugin requires GNA_PRIVATE_KEY & GNA_AUTH_AUD');
@@ -211,10 +212,10 @@ class Gordon_Now_App_Loader {
 		}
 
 		add_action( 'rest_api_init', function () {
-			register_rest_route( 'gordon-now-app/v1', '/validate-cookies', array(
+			register_rest_route( 'gordon-now-app/v1', '/validate-cookies', [
 			  'methods' => 'POST',
 			  'callback' => 'validate_cookies',
-			) );
+			 ]);
 		} );
 
 	}

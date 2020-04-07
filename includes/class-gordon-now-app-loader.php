@@ -130,7 +130,7 @@ class Gordon_Now_App_Loader {
 		 * Provide GNA Auth Cookies
 		 */
 
-		function authenticate_user_get_cookies( WP_REST_Request $request ) {
+		function authenticate_user_generate_tokens( WP_REST_Request $request ) {
 			$the_user = wp_authenticate($request['username'], $request['password']);
 			if( is_wp_error( $the_user ) ) {
 				// TODO: Replace with a better 401 response
@@ -138,6 +138,7 @@ class Gordon_Now_App_Loader {
 				return $the_user;
 			} else {
 				$user_id = $the_user->{'ID'};
+				$user_email = $the_user->{'user_email'};
 				// TODO: Short duration cookie for example only
 				$expiration = time() + 580;
 				// TODO: Change scheme to secure auth (https) later
@@ -149,19 +150,23 @@ class Gordon_Now_App_Loader {
 				$wordpress_cookie_exp = 'wordpress_cookie_expiration_unix';
 				$wordpress_cookie = 'wordpress_' . COOKIEHASH;
 				$wordpress_logged_in_cookie = 'wordpress_logged_in_' . COOKIEHASH;
+				// Call for JWT using user email
+				$generated_jwt = 'jwt';
+				$jwt = generate_gna_jwt($user_email);
 				// Populating the object we return with the cookies and their cookie names
-				$wp_cookies_object = new stdClass();
-				$wp_cookies_object->$wordpress_cookie_exp = $expiration;
-				$wp_cookies_object->$wordpress_cookie = $auth_cookie;
-				$wp_cookies_object->$wordpress_logged_in_cookie = $logged_in_cookie;
-				return $wp_cookies_object;
+				$wp_auth_object = new stdClass();
+				$wp_auth_object->$generated_jwt = $jwt;
+				$wp_auth_object->$wordpress_cookie_exp = $expiration;
+				$wp_auth_object->$wordpress_cookie = $auth_cookie;
+				$wp_auth_object->$wordpress_logged_in_cookie = $logged_in_cookie;
+				return $wp_auth_object;
 			}
 		}
 	
 		add_action( 'rest_api_init', function () {
 			register_rest_route( 'gordon-now-app/v1', '/authenticate-user', array(
 			  'methods' => 'POST',
-			  'callback' => 'authenticate_user_get_cookies',
+			  'callback' => 'authenticate_user_generate_tokens',
 			) );
 		} );
 
@@ -169,9 +174,10 @@ class Gordon_Now_App_Loader {
 		 * Endpoint to provide JWT
 		 */
 
-		function generate_gna_jwt( WP_REST_Request $request ) {
+		function generate_gna_jwt( $user_email ) {
 			if (defined('GNA_PRIVATE_KEY') && defined('GNA_AUTH_AUD')) {
 				$key = GNA_PRIVATE_KEY;
+				$publicKey = GNA_PUBLIC_KEY;
 				$aud = GNA_AUTH_AUD;
 				$payload = array(
 					"iss" => site_url(),
@@ -179,7 +185,8 @@ class Gordon_Now_App_Loader {
 					"iat" => time(),
 					"nbf" => time(),
 					// TODO: Set expiration time for JWT
-					"exp" => time() + 580
+					"exp" => time() + 580,
+					"sub" => $user_email
 				);
 	
 				/**
@@ -188,21 +195,14 @@ class Gordon_Now_App_Loader {
 				 * https://tools.ietf.org/html/draft-ietf-jose-json-web-algorithms-40
 				 * for a list of spec-compliant algorithms.
 				 */
-				$jwt = JWT::encode($payload, $key);
-				$decoded = JWT::decode($jwt, $key, array('HS256'));
+				$jwt = JWT::encode($payload, $key, 'RS256');
+				$decoded = JWT::decode($jwt, $publicKey, array('RS256'));
 				return $jwt;
 			} else {
 				wp_die('The Gordon Now App Integration plugin requires GNA_PRIVATE_KEY & GNA_AUTH_AUD');
 				return;
 			}
 		}
-	
-		add_action( 'rest_api_init', function () {
-			register_rest_route( 'gordon-now-app/v1', '/generate-gna-jwt', array(
-			  'methods' => 'POST',
-			  'callback' => 'generate_gna_jwt',
-			) );
-		} );
 
 		// Validate user is still logged in via cookies
 

@@ -65,6 +65,12 @@ register_deactivation_hook( __FILE__, 'deactivate_gordon_now_app' );
 require plugin_dir_path( __FILE__ ) . 'includes/class-gordon-now-app.php';
 
 /**
+ * Require composer autoload
+ */
+
+require 'vendor/autoload.php';
+
+/**
  * Begins execution of the plugin.
  *
  * Since everything within the plugin is registered via hooks,

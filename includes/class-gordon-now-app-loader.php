@@ -142,18 +142,20 @@ class Gordon_Now_App_Loader {
 				// TODO: Short duration cookie for example only - probably a config option
 				$expiration = time() + 580;
 				// TODO: Change scheme to secure auth (https) later
+
 				// This is the auth cookie used in wp-admin / wp-content that shows what you have access to. I think.
 				$auth_cookie_value = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token = '' );
-				// This is the front-end cookie that tells wordpress you have a valid logged in user session
-				$logged_in_cookie_value = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token = '' );
-
-				$logged_in_cookie = new stdClass();
-				$logged_in_cookie->name = 'wordpress_' . COOKIEHASH;
-				$logged_in_cookie->value = $logged_in_cookie_value;
 
 				$auth_cookie = new stdClass();
 				$auth_cookie->name = 'wordpress_' . COOKIEHASH;
 				$auth_cookie->value = $auth_cookie_value;
+				
+				// This is the front-end cookie that tells wordpress you have a valid logged in user session
+				$logged_in_cookie_value = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token = '' );
+
+				$logged_in_cookie = new stdClass();
+				$logged_in_cookie->name = 'wordpress_logged_in_' . COOKIEHASH;
+				$logged_in_cookie->value = $logged_in_cookie_value;
 
 				$jwt = generate_gna_jwt($user_email);
 				// Populating the object we return with the cookies and their cookie names

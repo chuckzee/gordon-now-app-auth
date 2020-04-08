@@ -143,22 +143,25 @@ class Gordon_Now_App_Loader {
 				$expiration = time() + 580;
 				// TODO: Change scheme to secure auth (https) later
 				// This is the auth cookie used in wp-admin / wp-content that shows what you have access to. I think.
-				$auth_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token = '' );
+				$auth_cookie_value = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token = '' );
 				// This is the front-end cookie that tells wordpress you have a valid logged in user session
-				$logged_in_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token = '' );
-				// The cookie names have hashed identifiers using WP constants
-				$wordpress_cookie_exp = 'wordpress_cookie_expiration_unix';
-				$wordpress_cookie = 'wordpress_' . COOKIEHASH;
-				$wordpress_logged_in_cookie = 'wordpress_logged_in_' . COOKIEHASH;
-				// Call for JWT using user email
-				$generated_jwt = 'jwt';
+				$logged_in_cookie_value = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token = '' );
+
+				$logged_in_cookie = new stdClass();
+				$logged_in_cookie->name = 'wordpress_' . COOKIEHASH;
+				$logged_in_cookie->value = $logged_in_cookie_value;
+
+				$auth_cookie = new stdClass();
+				$auth_cookie->name = 'wordpress_' . COOKIEHASH;
+				$auth_cookie->value = $auth_cookie_value;
+
 				$jwt = generate_gna_jwt($user_email);
 				// Populating the object we return with the cookies and their cookie names
 				$wp_auth_object = new stdClass();
-				$wp_auth_object->$generated_jwt = $jwt;
-				$wp_auth_object->$wordpress_cookie_exp = $expiration;
-				$wp_auth_object->$wordpress_cookie = $auth_cookie;
-				$wp_auth_object->$wordpress_logged_in_cookie = $logged_in_cookie;
+				$wp_auth_object->jwt = $jwt;
+				$wp_auth_object->wp_cookie_expiration = $expiration;
+				$wp_auth_object->wp_auth = $auth_cookie;
+				$wp_auth_object->wp_logged_in = $logged_in_cookie;
 				return $wp_auth_object;
 			}
 		}

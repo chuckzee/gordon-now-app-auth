@@ -13,3 +13,5 @@ The bulk of the work is located here:
 https://github.com/chuckzee/gordon-now-app-auth/blob/master/includes/class-gordon-now-app-loader.php
 
 Essentially, it parsed authenticated session cookies that were "shoved" into a native browser session. They were decoded using some config values that are not committed in this repository. 
+
+This did not end up being used in the production website and the SSO project was dropped (Covid fun times!).
